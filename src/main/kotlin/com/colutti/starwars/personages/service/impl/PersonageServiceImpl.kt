@@ -23,19 +23,14 @@ class PersonageServiceImpl: PersonageService {
 
     @Autowired
     lateinit var converter: PersonageConverter
-
     @Autowired
     lateinit var personageRepository: PersonageRepository
-
     @Autowired
     lateinit var actorRelationshipRepository: ActorRelationshipRepository
-
     @Autowired
     lateinit var planetRelationshipRepository: PlanetRelationshipRepository
-
     @Autowired
     lateinit var actorRequest: ActorRequest
-
     @Autowired
     lateinit var planetRequest: PlanetRequest
 
@@ -73,8 +68,7 @@ class PersonageServiceImpl: PersonageService {
 
     override fun getAll(): List<PersonageResponse> {
         val personageList: List<Personage> = personageRepository.findAll().toList()
-        val responseList: List<PersonageResponse> = personageList.map { getById(it.id) }
-        return responseList
+        return personageList.map { getById(it.id) }
     }
 
 }
