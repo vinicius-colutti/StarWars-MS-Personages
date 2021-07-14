@@ -1,21 +1,21 @@
 package com.colutti.starwars.personages.service.impl
 
+import com.colutti.starwars.personages.dto.personage.converts.ActorConverter
 import com.colutti.starwars.personages.dto.personage.converts.PersonageConverter
+import com.colutti.starwars.personages.dto.personage.converts.PlanetConverter
 import com.colutti.starwars.personages.dto.personage.request.PersonageRequestDto
-import com.colutti.starwars.personages.dto.personage.response.ActorResponse
 import com.colutti.starwars.personages.dto.personage.response.PersonageResponse
-import com.colutti.starwars.personages.dto.personage.response.PlanetResponse
 import com.colutti.starwars.personages.exception.PersonageNotFoundException
 import com.colutti.starwars.personages.model.ActorRelationship
 import com.colutti.starwars.personages.model.Personage
 import com.colutti.starwars.personages.model.PlanetRelationship
-import com.colutti.starwars.personages.repository.ActorRelationshipRepository
 import com.colutti.starwars.personages.repository.PersonageRepository
-import com.colutti.starwars.personages.repository.PlanetRelationshipRepository
-import com.colutti.starwars.personages.request.ActorRequest
-import com.colutti.starwars.personages.request.PlanetRequest
+import com.colutti.starwars.personages.service.ActorRelationshipService
 import com.colutti.starwars.personages.service.PersonageService
+import com.colutti.starwars.personages.service.PlanetRelationshipService
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.cache.annotation.CacheEvict
+import org.springframework.cache.annotation.Cacheable
 import org.springframework.stereotype.Service
 
 @Service
@@ -26,28 +26,31 @@ class PersonageServiceImpl: PersonageService {
     @Autowired
     lateinit var personageRepository: PersonageRepository
     @Autowired
-    lateinit var actorRelationshipRepository: ActorRelationshipRepository
+    lateinit var actorRelationshipService: ActorRelationshipService
     @Autowired
-    lateinit var planetRelationshipRepository: PlanetRelationshipRepository
+    lateinit var planetRelationshipService: PlanetRelationshipService
     @Autowired
-    lateinit var actorRequest: ActorRequest
+    lateinit var planetConverter: PlanetConverter
     @Autowired
-    lateinit var planetRequest: PlanetRequest
+    lateinit var actorConverter: ActorConverter
 
+    @CacheEvict("personages", allEntries = true)
     override fun create(personageRequestDto: PersonageRequestDto) {
         var personageToSave = this.converter.requestToPersonage(personageRequestDto)
         var savedPersonage = personageRepository.save(personageToSave)
         personageToSave.actors.map { actor ->
             actor.personage = savedPersonage
-            actorRelationshipRepository.save(actor)
+            actorRelationshipService.save(actor)
         }
-        planetRelationshipRepository.save(PlanetRelationship(0, personageRequestDto.planet.planet_id, savedPersonage))
+        planetRelationshipService.save(PlanetRelationship(0, personageRequestDto.planet.planet_id, savedPersonage))
     }
 
+    @CacheEvict("personages", allEntries = true)
     override fun update(id: Long, personageRequestDto: PersonageRequestDto) {
-        personageRepository.findById(id).orElseGet { throw PersonageNotFoundException("Personage ${id} not found")}
-        actorRelationshipRepository.deleteActors(id)
-        planetRelationshipRepository.deletePlanet(id)
+        personageRepository.findById(id)
+                .orElseGet { throw PersonageNotFoundException("Personage ${id} not found")}
+        actorRelationshipService.deleteActors(id)
+        planetRelationshipService.deletePlanet(id)
         var personageToUpdate = this.converter.requestToPersonage(personageRequestDto)
         personageToUpdate.id = id
         personageToUpdate.actors = personageToUpdate.actors.map { actor ->
@@ -58,14 +61,15 @@ class PersonageServiceImpl: PersonageService {
     }
 
     override fun getById(id: Long): PersonageResponse {
-        val personage: Personage = personageRepository.findById(id).orElseGet { throw PersonageNotFoundException("Personage ${id} not found") }
-        val actorList: List<ActorRelationship> = actorRelationshipRepository.findByPersonageId(id).toList()
-        val actorResponseList: List<ActorResponse> = actorList.map{ actorRequest.getActor(it.actor_id) }
-        val idPlanet: PlanetRelationship = planetRelationshipRepository.findByPersonageId(id)
-        val planetResponse: PlanetResponse = planetRequest.getPlanet(idPlanet.planet_id)
-        return converter.personageToResponse(personage,planetResponse,actorResponseList)
+        val personage: Personage = personageRepository.findById(id)
+                .orElseGet { throw PersonageNotFoundException("Personage ${id} not found") }
+        val actorList: List<ActorRelationship> = actorRelationshipService.findByPersonageId(id).toList()
+        val idPlanet: PlanetRelationship = planetRelationshipService.teste(id)
+        return converter.personageToResponse(personage,planetConverter.planetToReponse(idPlanet),
+                actorConverter.actorToResponse(actorList))
     }
 
+    @Cacheable("personages")
     override fun getAll(): List<PersonageResponse> {
         val personageList: List<Personage> = personageRepository.findAll().toList()
         return personageList.map { getById(it.id) }
