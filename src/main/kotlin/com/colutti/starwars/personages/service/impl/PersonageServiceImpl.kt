@@ -1,5 +1,6 @@
 package com.colutti.starwars.personages.service.impl
 
+import com.colutti.starwars.personages.dto.client.PersonageClientResponse
 import com.colutti.starwars.personages.dto.personage.converts.ActorConverter
 import com.colutti.starwars.personages.dto.personage.converts.PersonageConverter
 import com.colutti.starwars.personages.dto.personage.converts.PlanetConverter
@@ -10,6 +11,7 @@ import com.colutti.starwars.personages.model.ActorRelationship
 import com.colutti.starwars.personages.model.Personage
 import com.colutti.starwars.personages.model.PlanetRelationship
 import com.colutti.starwars.personages.repository.PersonageRepository
+import com.colutti.starwars.personages.request.MovieRequest
 import com.colutti.starwars.personages.service.ActorRelationshipService
 import com.colutti.starwars.personages.service.PersonageService
 import com.colutti.starwars.personages.service.PlanetRelationshipService
@@ -33,6 +35,8 @@ class PersonageServiceImpl: PersonageService {
     lateinit var planetConverter: PlanetConverter
     @Autowired
     lateinit var actorConverter: ActorConverter
+    @Autowired
+    lateinit var movieRequest: MovieRequest
 
     @CacheEvict("personages", allEntries = true)
     override fun create(personageRequestDto: PersonageRequestDto) {
@@ -73,6 +77,11 @@ class PersonageServiceImpl: PersonageService {
     override fun getAll(): List<PersonageResponse> {
         val personageList: List<Personage> = personageRepository.findAll().toList()
         return personageList.map { getById(it.id) }
+    }
+
+    override fun getByMovieId(movie_id: Long): List<PersonageResponse> {
+        var movieResponse = movieRequest.getMovie(movie_id);
+        return movieResponse.personages.map { p -> getById(p.personage_id) }
     }
 
 }

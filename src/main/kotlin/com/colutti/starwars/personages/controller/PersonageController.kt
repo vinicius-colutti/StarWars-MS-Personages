@@ -2,6 +2,7 @@ package com.colutti.starwars.personages.controller
 
 import com.colutti.starwars.personages.dto.ResponseDefault
 import com.colutti.starwars.personages.dto.personage.request.PersonageRequestDto
+import com.colutti.starwars.personages.dto.personage.response.PersonageResponse
 import com.colutti.starwars.personages.service.PersonageService
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.http.HttpStatus
@@ -35,8 +36,14 @@ class PersonageController {
             ResponseEntity(service.getById(id),HttpStatus.OK)
 
     @GetMapping
-    fun getAll() =
-            ResponseEntity(service.getAll(),HttpStatus.OK)
+    fun getAllAndByMovieId(@RequestParam("movie_id") movie_id: Long? = null): ResponseEntity<Any>{
+        if(movie_id === null){
+            return ResponseEntity(service.getAll(),HttpStatus.OK)
+        }else{
+            return ResponseEntity(service.getByMovieId(movie_id),HttpStatus.OK)
+        }
+    }
+
 
 
 }
